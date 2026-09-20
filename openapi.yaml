@@ -1,0 +1,1390 @@
+openapi: 3.0.3
+info:
+  title: QueueLess API
+  description: |
+    # QueueLess — Real-Time Virtual Queue Management Platform API
+    
+    This API powers the QueueLess web and mobile applications.
+    
+    ### Global Response Format
+    Every API endpoint adheres to a standardized response envelope:
+    ```json
+    {
+      "status": "success",
+      "message": "Operation completed successfully",
+      "content": { ... }
+    }
+    ```
+  version: 1.0.0
+  contact:
+    name: QueueLess Engineering
+    email: support@queueless.app
+
+servers:
+  - url: http://localhost:8000/api/v1
+    description: Local Development Server
+  - url: https://api.queueless.app/api/v1
+    description: Production API
+
+tags:
+  - name: Auth
+    description: Authentication & Staff/Admin user sessions
+  - name: Businesses
+    description: Business discovery, profiles, operating hours, and QR generation
+  - name: Queues
+    description: Queue creation, configuration, status, and state controls
+  - name: Customer Tickets
+    description: Guest and registered customer ticket lifecycle (Join, Track, Leave)
+  - name: Staff Workstation
+    description: Operations for calling next, completing, skipping, and recalling tickets
+  - name: Analytics
+    description: Queue performance, average wait times, and volume metrics
+
+paths:
+  # ==========================================
+  # AUTH ENDPOINTS
+  # ==========================================
+  /auth/register:
+    post:
+      tags:
+        - Auth
+      summary: Register a new business owner / admin
+      operationId: registerAdmin
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegisterRequest'
+      responses:
+        '201':
+          description: User registered successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/BaseApiResponse'
+                  - type: object
+                    properties:
+                      content:
+                        $ref: '#/components/schemas/AuthResponse'
+        '400':
+          description: Validation error or email already registered
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorApiResponse'
+
+  /auth/login:
+    post:
+      tags:
+        - Auth
+      summary: Log in staff or business admin
+      operationId: login
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+      responses:
+        '200':
+          description: Successfully authenticated
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/BaseApiResponse'
+                  - type: object
+                    properties:
+                      content:
+                        $ref: '#/components/schemas/AuthResponse'
+        '401':
+          description: Invalid credentials
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorApiResponse'
+
+  /auth/me:
+    get:
+      tags:
+        - Auth
+      summary: Get currently authenticated user profile
+      operationId: getCurrentUser
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Authenticated user details
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/BaseApiResponse'
+                  - type: object
+                    properties:
+                      content:
+                        $ref: '#/components/schemas/User'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorApiResponse'
+
+  # ==========================================
+  # BUSINESSES ENDPOINTS
+  # ==========================================
+  /businesses:
+    get:
+      tags:
+        - Businesses
+      summary: Browse and search businesses
+      operationId: searchBusinesses
+      parameters:
+        - name: q
+          in: query
+          schema:
+            type: string
+        - name: category
+          in: query
+          schema:
+            $ref: '#/components/schemas/BusinessCategory'
+        - name: open_now
+          in: query
+          schema:
+            type: boolean
+        - name: sort_by
+          in: query
+          schema:
+            type: string
+            enum: [distance, shortest_wait, popular, name]
+            default: shortest_wait
+      responses:
+        '200':
+          description: List of businesses
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/BaseApiResponse'
+                  - type: object
+                    properties:
+                      content:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/BusinessSummary'
+
+    post:
+      tags:
+        - Businesses
+      summary: Create a new business (Admin only)
+      operationId: createBusiness
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateBusinessRequest'
+      responses:
+        '201':
+          description: Business created successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/BaseApiResponse'
+                  - type: object
+                    properties:
+                      content:
+                        $ref: '#/components/schemas/Business'
+
+  /businesses/{id}:
+    get:
+      tags:
+        - Businesses
+      summary: Get business details and active queues
+      operationId: getBusinessById
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Full business details with queue information
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/BaseApiResponse'
+                  - type: object
+                    properties:
+                      content:
+                        $ref: '#/components/schemas/BusinessDetail'
+        '404':
+          description: Business not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorApiResponse'
+
+    put:
+      tags:
+        - Businesses
+      summary: Update business details (Admin only)
+      operationId: updateBusiness
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateBusinessRequest'
+      responses:
+        '200':
+          description: Business updated successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/BaseApiResponse'
+                  - type: object
+                    properties:
+                      content:
+                        $ref: '#/components/schemas/Business'
+
+  /businesses/{id}/qr:
+    get:
+      tags:
+        - Businesses
+      summary: Generate QR code poster and direct join payload
+      operationId: getBusinessQR
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: QR code details and poster payload
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/BaseApiResponse'
+                  - type: object
+                    properties:
+                      content:
+                        $ref: '#/components/schemas/QRCodeResponse'
+
+  # ==========================================
+  # QUEUES ENDPOINTS
+  # ==========================================
+  /businesses/{business_id}/queues:
+    get:
+      tags:
+        - Queues
+      summary: List all queues for a business
+      operationId: listBusinessQueues
+      parameters:
+        - name: business_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: List of queues
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/BaseApiResponse'
+                  - type: object
+                    properties:
+                      content:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/Queue'
+
+    post:
+      tags:
+        - Queues
+      summary: Create a new queue for a business (Admin only)
+      operationId: createQueue
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: business_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateQueueRequest'
+      responses:
+        '201':
+          description: Queue created
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/BaseApiResponse'
+                  - type: object
+                    properties:
+                      content:
+                        $ref: '#/components/schemas/Queue'
+
+  /queues/{id}:
+    get:
+      tags:
+        - Queues
+      summary: Get queue live state and current wait time
+      operationId: getQueueById
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Queue live details
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/BaseApiResponse'
+                  - type: object
+                    properties:
+                      content:
+                        $ref: '#/components/schemas/QueueLiveState'
+
+  /queues/{id}/status:
+    patch:
+      tags:
+        - Queues
+      summary: Change queue status (Open, Paused, Closed)
+      operationId: updateQueueStatus
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - status
+              properties:
+                status:
+                  $ref: '#/components/schemas/QueueStatus'
+                pause_reason:
+                  type: string
+                  example: "Staff lunch break"
+      responses:
+        '200':
+          description: Queue status updated
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/BaseApiResponse'
+                  - type: object
+                    properties:
+                      content:
+                        $ref: '#/components/schemas/Queue'
+
+  # ==========================================
+  # CUSTOMER TICKETS ENDPOINTS
+  # ==========================================
+  /queues/{queue_id}/join:
+    post:
+      tags:
+        - Customer Tickets
+      summary: 1-Click Join Queue (Guest or Registered)
+      operationId: joinQueue
+      parameters:
+        - name: queue_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/JoinQueueRequest'
+      responses:
+        '201':
+          description: Ticket generated successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/BaseApiResponse'
+                  - type: object
+                    properties:
+                      content:
+                        $ref: '#/components/schemas/Ticket'
+        '409':
+          description: Queue is paused, closed, or user already has active ticket
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorApiResponse'
+
+  /tickets/{id}:
+    get:
+      tags:
+        - Customer Tickets
+      summary: Get live ticket status, position, and wait time
+      operationId: getTicketStatus
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Live ticket information
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/BaseApiResponse'
+                  - type: object
+                    properties:
+                      content:
+                        $ref: '#/components/schemas/LiveTicketState'
+        '404':
+          description: Ticket not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorApiResponse'
+
+  /tickets/{id}/leave:
+    post:
+      tags:
+        - Customer Tickets
+      summary: Leave queue (Cancel ticket)
+      operationId: leaveQueue
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                reason:
+                  type: string
+      responses:
+        '200':
+          description: Ticket cancelled successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/BaseApiResponse'
+                  - type: object
+                    properties:
+                      content:
+                        $ref: '#/components/schemas/Ticket'
+
+  # ==========================================
+  # STAFF WORKSTATION ENDPOINTS
+  # ==========================================
+  /queues/{queue_id}/workstation:
+    get:
+      tags:
+        - Staff Workstation
+      summary: Get complete workstation view (Currently Serving + Waiting List)
+      operationId: getWorkstationState
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: queue_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Staff workstation snapshot
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/BaseApiResponse'
+                  - type: object
+                    properties:
+                      content:
+                        $ref: '#/components/schemas/WorkstationState'
+
+  /queues/{queue_id}/call-next:
+    post:
+      tags:
+        - Staff Workstation
+      summary: Call next waiting customer
+      operationId: callNextCustomer
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: queue_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                counter_or_station:
+                  type: string
+                  example: "Counter 2"
+      responses:
+        '200':
+          description: Customer called successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/BaseApiResponse'
+                  - type: object
+                    properties:
+                      content:
+                        $ref: '#/components/schemas/Ticket'
+        '404':
+          description: No customers currently waiting
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorApiResponse'
+
+  /tickets/{id}/complete:
+    post:
+      tags:
+        - Staff Workstation
+      summary: Mark ticket as served/completed
+      operationId: completeTicket
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Ticket completed and service duration logged
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/BaseApiResponse'
+                  - type: object
+                    properties:
+                      content:
+                        $ref: '#/components/schemas/Ticket'
+
+  /tickets/{id}/skip:
+    post:
+      tags:
+        - Staff Workstation
+      summary: Skip / Put customer on hold (5-min grace period)
+      operationId: skipTicket
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                hold_minutes:
+                  type: integer
+                  default: 5
+                reason:
+                  type: string
+      responses:
+        '200':
+          description: Customer marked as skipped / placed on hold
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/BaseApiResponse'
+                  - type: object
+                    properties:
+                      content:
+                        $ref: '#/components/schemas/Ticket'
+
+  /tickets/{id}/recall:
+    post:
+      tags:
+        - Staff Workstation
+      summary: Re-announce / sound alert for called customer
+      operationId: recallTicket
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Sound alert & push notification re-triggered
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/BaseApiResponse'
+                  - type: object
+                    properties:
+                      content:
+                        type: object
+                        properties:
+                          success:
+                            type: boolean
+                          chime_broadcasted:
+                            type: boolean
+
+  # ==========================================
+  # TV KIOSK DISPLAY ENDPOINT
+  # ==========================================
+  /queues/{queue_id}/tv-display:
+    get:
+      tags:
+        - Queues
+      summary: High-contrast waiting room TV display feed
+      operationId: getTVDisplayData
+      parameters:
+        - name: queue_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: TV Display payload
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/BaseApiResponse'
+                  - type: object
+                    properties:
+                      content:
+                        $ref: '#/components/schemas/TVDisplayResponse'
+
+  # ==========================================
+  # ANALYTICS ENDPOINTS
+  # ==========================================
+  /businesses/{business_id}/analytics:
+    get:
+      tags:
+        - Analytics
+      summary: Get queue metrics, peak hours, and wait time insights
+      operationId: getBusinessAnalytics
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: business_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: period
+          in: query
+          schema:
+            type: string
+            enum: [today, 7d, 30d, custom]
+            default: today
+      responses:
+        '200':
+          description: Analytics insights and chart datasets
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/BaseApiResponse'
+                  - type: object
+                    properties:
+                      content:
+                        $ref: '#/components/schemas/AnalyticsReport'
+
+# ==========================================
+# COMPONENTS & SCHEMAS
+# ==========================================
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    # --- Global Envelope Schemas ---
+    BaseApiResponse:
+      type: object
+      required:
+        - status
+        - message
+        - content
+      properties:
+        status:
+          type: string
+          example: "success"
+        message:
+          type: string
+          example: "Operation completed successfully"
+        content:
+          type: object
+          description: Generic data payload
+
+    ErrorApiResponse:
+      type: object
+      required:
+        - status
+        - message
+        - content
+      properties:
+        status:
+          type: string
+          example: "error"
+        message:
+          type: string
+          example: "Detailed error description"
+        content:
+          type: object
+          nullable: true
+          example: null
+
+    # --- Auth & Users ---
+    UserRole:
+      type: string
+      enum: [CUSTOMER, STAFF, ADMIN]
+
+    User:
+      type: object
+      required:
+        - id
+        - name
+        - email
+        - role
+        - created_at
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+          example: "Dr. Sarah Mitchell"
+        email:
+          type: string
+          format: email
+          example: "sarah@citydental.com"
+        role:
+          $ref: '#/components/schemas/UserRole'
+        business_id:
+          type: string
+          format: uuid
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+
+    RegisterRequest:
+      type: object
+      required:
+        - name
+        - email
+        - password
+        - business_name
+        - category
+      properties:
+        name:
+          type: string
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+          format: password
+          minLength: 8
+        business_name:
+          type: string
+        category:
+          $ref: '#/components/schemas/BusinessCategory'
+
+    LoginRequest:
+      type: object
+      required:
+        - email
+        - password
+      properties:
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+          format: password
+
+    AuthResponse:
+      type: object
+      required:
+        - token
+        - user
+      properties:
+        token:
+          type: string
+          example: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+        user:
+          $ref: '#/components/schemas/User'
+
+    # --- Businesses ---
+    BusinessCategory:
+      type: string
+      enum:
+        - Clinics & Healthcare
+        - Salons & Spas
+        - Repair & Service Centers
+        - Restaurants & Dining
+        - Banking & Finance
+        - Education & Colleges
+        - Public Offices & Services
+        - Other
+
+    Business:
+      type: object
+      required:
+        - id
+        - name
+        - slug
+        - category
+        - address
+        - opening_time
+        - closing_time
+        - average_service_time
+        - is_open
+        - created_at
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+          example: "City Dental & Care"
+        slug:
+          type: string
+          example: "city-dental-care"
+        category:
+          $ref: '#/components/schemas/BusinessCategory'
+        description:
+          type: string
+        address:
+          type: string
+        phone:
+          type: string
+        opening_time:
+          type: string
+          example: "09:00"
+        closing_time:
+          type: string
+          example: "18:00"
+        average_service_time:
+          type: integer
+          example: 15
+        is_open:
+          type: boolean
+          example: true
+        created_at:
+          type: string
+          format: date-time
+
+    BusinessSummary:
+      type: object
+      required:
+        - id
+        - name
+        - slug
+        - category
+        - address
+        - is_open
+        - currently_serving
+        - people_waiting
+        - estimated_wait_minutes
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+          example: "City Dental & Care"
+        slug:
+          type: string
+          example: "city-dental-care"
+        category:
+          $ref: '#/components/schemas/BusinessCategory'
+        address:
+          type: string
+          example: "742 Evergreen Terrace"
+        distance_km:
+          type: number
+          example: 1.4
+        is_open:
+          type: boolean
+          example: true
+        currently_serving:
+          type: string
+          example: "#18"
+        people_waiting:
+          type: integer
+          example: 12
+        estimated_wait_minutes:
+          type: integer
+          example: 35
+
+    BusinessDetail:
+      allOf:
+        - $ref: '#/components/schemas/Business'
+        - type: object
+          properties:
+            active_queues:
+              type: array
+              items:
+                $ref: '#/components/schemas/QueueLiveState'
+
+    CreateBusinessRequest:
+      type: object
+      required:
+        - name
+        - category
+        - address
+        - opening_time
+        - closing_time
+        - average_service_time
+      properties:
+        name:
+          type: string
+        category:
+          $ref: '#/components/schemas/BusinessCategory'
+        description:
+          type: string
+        address:
+          type: string
+        phone:
+          type: string
+        opening_time:
+          type: string
+        closing_time:
+          type: string
+        average_service_time:
+          type: integer
+
+    UpdateBusinessRequest:
+      type: object
+      properties:
+        name:
+          type: string
+        description:
+          type: string
+        address:
+          type: string
+        phone:
+          type: string
+        opening_time:
+          type: string
+        closing_time:
+          type: string
+        average_service_time:
+          type: integer
+        is_open:
+          type: boolean
+
+    QRCodeResponse:
+      type: object
+      required:
+        - business_id
+        - join_url
+        - qr_code_svg
+      properties:
+        business_id:
+          type: string
+          format: uuid
+        business_name:
+          type: string
+        join_url:
+          type: string
+          example: "https://queueless.app/join/city-dental-care"
+        qr_code_svg:
+          type: string
+        printable_poster_url:
+          type: string
+
+    # --- Queues ---
+    QueueStatus:
+      type: string
+      enum: [OPEN, PAUSED, CLOSED]
+
+    Queue:
+      type: object
+      required:
+        - id
+        - business_id
+        - name
+        - status
+        - average_service_time
+        - created_at
+      properties:
+        id:
+          type: string
+          format: uuid
+        business_id:
+          type: string
+          format: uuid
+        name:
+          type: string
+          example: "General Consultation"
+        status:
+          $ref: '#/components/schemas/QueueStatus'
+        average_service_time:
+          type: integer
+          example: 15
+        max_capacity:
+          type: integer
+          example: 100
+        created_at:
+          type: string
+          format: date-time
+
+    QueueLiveState:
+      allOf:
+        - $ref: '#/components/schemas/Queue'
+        - type: object
+          required:
+            - currently_serving_ticket
+            - people_waiting
+            - estimated_wait_minutes
+          properties:
+            currently_serving_ticket:
+              type: string
+              nullable: true
+              example: "#21"
+            currently_serving_started_at:
+              type: string
+              format: date-time
+              nullable: true
+            people_waiting:
+              type: integer
+              example: 8
+            estimated_wait_minutes:
+              type: integer
+              example: 32
+
+    CreateQueueRequest:
+      type: object
+      required:
+        - name
+        - average_service_time
+      properties:
+        name:
+          type: string
+        average_service_time:
+          type: integer
+        max_capacity:
+          type: integer
+          default: 100
+
+    # --- Tickets ---
+    TicketStatus:
+      type: string
+      enum: [WAITING, CALLED, SERVING, COMPLETED, SKIPPED, CANCELLED, EXPIRED]
+
+    Ticket:
+      type: object
+      required:
+        - id
+        - queue_id
+        - ticket_number
+        - customer_name
+        - status
+        - joined_at
+      properties:
+        id:
+          type: string
+          format: uuid
+        queue_id:
+          type: string
+          format: uuid
+        ticket_number:
+          type: integer
+          example: 29
+        ticket_code:
+          type: string
+          example: "#29"
+        customer_name:
+          type: string
+          example: "Alex Johnson"
+        phone:
+          type: string
+          nullable: true
+        service_type:
+          type: string
+          nullable: true
+        status:
+          $ref: '#/components/schemas/TicketStatus'
+        guest_token:
+          type: string
+        joined_at:
+          type: string
+          format: date-time
+        called_at:
+          type: string
+          format: date-time
+          nullable: true
+        completed_at:
+          type: string
+          format: date-time
+          nullable: true
+
+    LiveTicketState:
+      allOf:
+        - $ref: '#/components/schemas/Ticket'
+        - type: object
+          required:
+            - business_name
+            - queue_name
+            - currently_serving
+            - people_ahead
+            - estimated_wait_minutes
+            - progress_percent
+          properties:
+            business_name:
+              type: string
+              example: "City Dental & Care"
+            queue_name:
+              type: string
+              example: "General Consultation"
+            currently_serving:
+              type: string
+              nullable: true
+              example: "#21"
+            people_ahead:
+              type: integer
+              example: 8
+            estimated_wait_minutes:
+              type: integer
+              example: 32
+            progress_percent:
+              type: number
+              example: 62.5
+            counter_or_station:
+              type: string
+              nullable: true
+              example: "Counter 2"
+            alert_state:
+              type: string
+              enum: [NORMAL, ALMOST_READY, CALLED_NOW, MISSED]
+
+    JoinQueueRequest:
+      type: object
+      required:
+        - customer_name
+      properties:
+        customer_name:
+          type: string
+          example: "Alex Johnson"
+        phone:
+          type: string
+          example: "+1 555-0199"
+        service_type:
+          type: string
+          example: "Dental Cleaning"
+        guest_session_id:
+          type: string
+
+    # --- Staff Workstation ---
+    WorkstationState:
+      type: object
+      required:
+        - queue
+        - active_ticket
+        - waiting_tickets
+        - skipped_tickets
+        - today_stats
+      properties:
+        queue:
+          $ref: '#/components/schemas/Queue'
+        active_ticket:
+          $ref: '#/components/schemas/Ticket'
+          nullable: true
+        active_service_duration_seconds:
+          type: integer
+          example: 525
+        waiting_tickets:
+          type: array
+          items:
+            $ref: '#/components/schemas/Ticket'
+        skipped_tickets:
+          type: array
+          items:
+            $ref: '#/components/schemas/Ticket'
+        today_stats:
+          type: object
+          properties:
+            customers_served_today:
+              type: integer
+              example: 42
+            average_wait_minutes:
+              type: integer
+              example: 16
+            active_waitlist_count:
+              type: integer
+              example: 9
+
+    # --- TV Display ---
+    TVDisplayResponse:
+      type: object
+      required:
+        - business_name
+        - queue_name
+        - currently_serving
+        - upcoming_tickets
+        - qr_code_url
+      properties:
+        business_name:
+          type: string
+          example: "City Dental & Care"
+        queue_name:
+          type: string
+          example: "Main Consultation Queue"
+        currently_serving:
+          type: object
+          nullable: true
+          properties:
+            ticket_code:
+              type: string
+            customer_display_name:
+              type: string
+            station:
+              type: string
+        upcoming_tickets:
+          type: array
+          items:
+            type: object
+            properties:
+              ticket_code:
+                type: string
+              customer_display_name:
+                type: string
+              estimated_wait_minutes:
+                type: integer
+        qr_code_url:
+          type: string
+
+    # --- Analytics ---
+    AnalyticsReport:
+      type: object
+      required:
+        - total_customers_served
+        - average_wait_time_minutes
+        - average_service_time_minutes
+        - peak_hour_range
+        - hourly_traffic
+        - service_breakdown
+      properties:
+        total_customers_served:
+          type: integer
+        average_wait_time_minutes:
+          type: integer
+        average_service_time_minutes:
+          type: integer
+        peak_hour_range:
+          type: string
+        abandonment_rate_percent:
+          type: number
+        hourly_traffic:
+          type: array
+          items:
+            type: object
+            properties:
+              hour_label:
+                type: string
+              customers_served:
+                type: integer
+              average_wait_min:
+                type: integer
+        service_breakdown:
+          type: array
+          items:
+            type: object
+            properties:
+              service_name:
+                type: string
+              count:
+                type: integer
+              percentage:
+                type: number
