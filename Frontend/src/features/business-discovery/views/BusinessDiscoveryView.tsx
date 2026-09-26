@@ -1,8 +1,9 @@
 import React from 'react';
 import { useBusinessSearchViewModel } from '../viewmodels/useBusinessSearchViewModel';
-import { Search, MapPin, Users, Clock, Sparkles, ArrowRight, ShieldCheck } from 'lucide-react';
+import { Search, MapPin, Users, Clock, Radio, ArrowRight, ShieldCheck } from 'lucide-react';
 import { Badge } from '@/shared/components/Badge';
 import { Button } from '@/shared/components/Button';
+import { Skeleton } from '@/shared/components/Skeleton';
 import { JoinQueueModal } from '@/features/customer-queue/views/JoinQueueModal';
 
 export const BusinessDiscoveryView: React.FC = () => {
@@ -14,7 +15,7 @@ export const BusinessDiscoveryView: React.FC = () => {
       <section className="relative overflow-hidden pt-12 pb-16 px-4 sm:px-6 lg:px-8 border-b border-slate-200/60 bg-gradient-to-b from-surface-container-low/80 to-surface">
         <div className="max-w-4xl mx-auto text-center space-y-5">
           <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-indigo-50 border border-indigo-100 text-indigo-700 text-xs font-semibold shadow-sm">
-            <Sparkles className="w-3.5 h-3.5 text-indigo-500" />
+            <Radio className="w-3.5 h-3.5 text-indigo-500 animate-pulse" />
             <span>Zero physical waiting — Virtual queues with live tracking</span>
           </div>
 
@@ -76,14 +77,31 @@ export const BusinessDiscoveryView: React.FC = () => {
             <p className="text-xs text-slate-500">Live updating estimated wait times</p>
           </div>
           <span className="text-xs font-semibold text-slate-500 bg-slate-100 px-3 py-1 rounded-full">
-            {vm.businesses.length} Places Open
+            {vm.isLoading ? 'Loading places...' : `${vm.businesses.length} Places Open`}
           </span>
         </div>
 
         {vm.isLoading ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {[1, 2, 3].map((n) => (
-              <div key={n} className="h-64 bg-slate-100 rounded-2xl animate-pulse" />
+              <div
+                key={n}
+                className="bg-white rounded-2xl border border-slate-200/80 p-5 shadow-subtle space-y-4"
+              >
+                <div className="flex justify-between items-center">
+                  <Skeleton className="h-5 w-20 rounded-full" />
+                  <Skeleton className="h-5 w-14 rounded-full" />
+                </div>
+                <div className="space-y-2">
+                  <Skeleton className="h-6 w-44 rounded-lg" />
+                  <Skeleton className="h-4 w-56 rounded" />
+                  <Skeleton className="h-3 w-full rounded" />
+                </div>
+                <div className="pt-2">
+                  <Skeleton className="h-16 rounded-xl mb-3" />
+                  <Skeleton className="h-10 rounded-xl" />
+                </div>
+              </div>
             ))}
           </div>
         ) : vm.businesses.length === 0 ? (

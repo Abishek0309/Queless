@@ -3,7 +3,19 @@ import { useLiveTicketViewModel } from '../viewmodels/useLiveTicketViewModel';
 import { Badge } from '@/shared/components/Badge';
 import { Button } from '@/shared/components/Button';
 import { Modal } from '@/shared/components/Modal';
-import { Users, Clock, Bell, Volume2, ArrowLeft, AlertCircle, Sparkles, CheckCircle2 } from 'lucide-react';
+import { Skeleton } from '@/shared/components/Skeleton';
+import { formatWaitTime } from '@/core/utils/time';
+import {
+  Users,
+  Clock,
+  Volume2,
+  ArrowLeft,
+  AlertCircle,
+  BellRing,
+  CheckCircle2,
+  Zap,
+  Ticket as TicketIcon
+} from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 export const LiveTicketView: React.FC = () => {
@@ -11,8 +23,30 @@ export const LiveTicketView: React.FC = () => {
 
   if (vm.isLoading) {
     return (
-      <div className="min-h-[80vh] flex items-center justify-center">
-        <div className="w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin" />
+      <div className="min-h-screen bg-surface px-4 py-6 sm:py-10 max-w-md mx-auto space-y-5">
+        <div className="flex justify-between items-center">
+          <Skeleton className="h-8 w-28 rounded-xl" />
+          <Skeleton className="h-6 w-20 rounded-full" />
+        </div>
+        <div className="space-y-2 text-center pt-2">
+          <Skeleton className="h-3 w-32 mx-auto rounded" />
+          <Skeleton className="h-7 w-48 mx-auto rounded-xl" />
+          <Skeleton className="h-3 w-36 mx-auto rounded" />
+        </div>
+        <div className="bg-white rounded-3xl border border-slate-200/90 p-6 space-y-5 text-center shadow-subtle">
+          <Skeleton className="h-6 w-44 mx-auto rounded-full" />
+          <div className="space-y-2">
+            <Skeleton className="h-3 w-28 mx-auto rounded" />
+            <Skeleton className="h-16 w-36 mx-auto rounded-2xl" />
+            <Skeleton className="h-4 w-28 mx-auto rounded" />
+          </div>
+          <div className="grid grid-cols-2 gap-3 pt-2">
+            <Skeleton className="h-20 rounded-2xl" />
+            <Skeleton className="h-20 rounded-2xl" />
+          </div>
+          <Skeleton className="h-3 w-full rounded-full" />
+          <Skeleton className="h-8 w-24 mx-auto rounded-full" />
+        </div>
       </div>
     );
   }
@@ -40,13 +74,56 @@ export const LiveTicketView: React.FC = () => {
   const isCalled = ticket.status === 'CALLED' || ticket.alert_state === 'CALLED_NOW';
   const isAlmostReady = ticket.alert_state === 'ALMOST_READY' || ticket.people_ahead === 1;
 
+  // Dynamic color palette based on queue size (Item 2)
+  const isTop20 = ticket.people_ahead <= 20;
+  const isModerate = ticket.people_ahead > 20 && ticket.people_ahead <= 50;
+
+  // Visual style tokens based on queue size
+  const queueTheme = isCalled
+    ? {
+        accentText: 'text-emerald-600',
+        cardBorder: 'border-emerald-300 ring-4 ring-emerald-500/10 shadow-glow-emerald',
+        badgeBg: 'bg-emerald-50 text-emerald-800 border-emerald-200',
+        progressBar: 'bg-emerald-500',
+        statusPill: '⚡ IT\'S YOUR TURN!',
+        pillIcon: BellRing,
+      }
+    : isTop20
+    ? {
+        accentText: 'text-emerald-600',
+        cardBorder: 'border-emerald-200 shadow-sm hover:border-emerald-300',
+        badgeBg: 'bg-emerald-50 text-emerald-800 border-emerald-200',
+        progressBar: 'bg-gradient-to-r from-emerald-400 to-emerald-600',
+        statusPill: '🟢 Top 20 in Line • Fast Moving Queue',
+        pillIcon: Zap,
+      }
+    : isModerate
+    ? {
+        accentText: 'text-amber-600',
+        cardBorder: 'border-amber-200 shadow-sm hover:border-amber-300',
+        badgeBg: 'bg-amber-50 text-amber-900 border-amber-200',
+        progressBar: 'bg-gradient-to-r from-amber-400 to-amber-600',
+        statusPill: '🟡 Moderate Queue (20–50 ahead)',
+        pillIcon: Clock,
+      }
+    : {
+        accentText: 'text-indigo-600',
+        cardBorder: 'border-indigo-200 shadow-sm hover:border-indigo-300',
+        badgeBg: 'bg-indigo-50 text-indigo-800 border-indigo-200',
+        progressBar: 'bg-gradient-to-r from-indigo-500 to-primary',
+        statusPill: '🟣 High Volume Queue (50+ ahead)',
+        pillIcon: Users,
+      };
+
+  const StatusIcon = queueTheme.pillIcon;
+
   return (
     <div className="min-h-screen bg-surface px-4 py-6 sm:py-10 max-w-md mx-auto space-y-5">
       {/* Top Header */}
       <div className="flex items-center justify-between">
         <Link
           to="/"
-          className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-600 hover:text-slate-900 bg-white px-3 py-1.5 rounded-xl border border-slate-200/80 shadow-subtle"
+          className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-600 hover:text-slate-900 bg-white px-3 py-1.5 rounded-xl border border-slate-200/80 shadow-subtle transition"
         >
           <ArrowLeft className="w-3.5 h-3.5" />
           <span>Back to Explore</span>
@@ -68,7 +145,7 @@ export const LiveTicketView: React.FC = () => {
       {isCalled ? (
         <div className="bg-emerald-500 text-white p-4 rounded-2xl shadow-elevated border border-emerald-400 animate-bounce-subtle space-y-2 text-center">
           <div className="flex items-center justify-center gap-2">
-            <Sparkles className="w-5 h-5 text-yellow-200" />
+            <BellRing className="w-5 h-5 text-yellow-200" />
             <span className="font-display font-extrabold text-base tracking-wide">IT'S YOUR TURN!</span>
           </div>
           <p className="text-xs text-emerald-50 font-medium">
@@ -87,16 +164,22 @@ export const LiveTicketView: React.FC = () => {
         </div>
       ) : null}
 
-      {/* Hero Ticket Card */}
-      <div className="relative bg-white rounded-3xl border border-slate-200/90 shadow-elevated p-6 space-y-6 text-center overflow-hidden">
+      {/* Hero Ticket Card with Dynamic Queue Color Theme */}
+      <div className={`relative bg-white rounded-3xl border ${queueTheme.cardBorder} p-6 space-y-6 text-center overflow-hidden transition-all duration-300`}>
+        {/* Dynamic Queue Tier Pill */}
+        <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold border ${queueTheme.badgeBg}">
+          <StatusIcon className="w-3.5 h-3.5" />
+          <span>{queueTheme.statusPill}</span>
+        </div>
+
         <div className="space-y-1">
           <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Your Queue Number</p>
-          <div className="font-display font-extrabold text-6xl text-slate-900 tabular-nums tracking-tight">
+          <div className={`font-display font-extrabold text-6xl tabular-nums tracking-tight ${queueTheme.accentText}`}>
             {ticket.ticket_code}
           </div>
-          <p className="text-xs font-semibold text-slate-600">{ticket.customer_name}</p>
+          <p className="text-xs font-semibold text-slate-700">{ticket.customer_name}</p>
           {ticket.service_type && (
-            <span className="inline-block text-[11px] font-medium text-indigo-700 bg-indigo-50 px-2.5 py-0.5 rounded-full">
+            <span className="inline-block text-[11px] font-medium text-indigo-700 bg-indigo-50 px-2.5 py-0.5 rounded-full mt-1">
               {ticket.service_type}
             </span>
           )}
@@ -104,23 +187,24 @@ export const LiveTicketView: React.FC = () => {
 
         {/* 2-Column Sub Stats Grid */}
         <div className="grid grid-cols-2 gap-3 pt-2">
-          <div className="bg-slate-50 p-3.5 rounded-2xl border border-slate-100 text-center">
+          <div className="bg-slate-50/90 p-3.5 rounded-2xl border border-slate-100 text-center">
             <p className="text-[10px] text-slate-400 font-bold uppercase flex items-center justify-center gap-1 mb-1">
               <Users className="w-3 h-3 text-slate-400" />
               <span>People Ahead</span>
             </p>
-            <p className="font-display font-extrabold text-2xl text-slate-800 tabular-nums">
+            <p className={`font-display font-extrabold text-2xl tabular-nums ${queueTheme.accentText}`}>
               {isCalled ? '0' : ticket.people_ahead}
             </p>
           </div>
 
-          <div className="bg-slate-50 p-3.5 rounded-2xl border border-slate-100 text-center">
+          <div className="bg-slate-50/90 p-3.5 rounded-2xl border border-slate-100 text-center">
             <p className="text-[10px] text-slate-400 font-bold uppercase flex items-center justify-center gap-1 mb-1">
               <Clock className="w-3 h-3 text-slate-400" />
               <span>Est. Waiting</span>
             </p>
-            <p className="font-display font-extrabold text-2xl text-indigo-600 tabular-nums">
-              {isCalled ? 'Now' : `~${ticket.estimated_wait_minutes}m`}
+            {/* Formatted in HH:MM pattern once >= 60 min */}
+            <p className={`font-display font-extrabold text-2xl tabular-nums ${queueTheme.accentText}`}>
+              {isCalled ? 'Now' : formatWaitTime(ticket.estimated_wait_minutes)}
             </p>
           </div>
         </div>
@@ -132,18 +216,12 @@ export const LiveTicketView: React.FC = () => {
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
               Serving: {ticket.currently_serving || '#21'}
             </span>
-            <span className="text-indigo-700 font-bold">You ({ticket.ticket_code})</span>
+            <span className="text-slate-800 font-bold">You ({ticket.ticket_code})</span>
           </div>
 
           <div className="w-full bg-slate-100 h-3 rounded-full overflow-hidden p-0.5">
             <div
-              className={`h-full rounded-full transition-all duration-700 ${
-                isCalled
-                  ? 'bg-emerald-500 w-full'
-                  : isAlmostReady
-                  ? 'bg-amber-500'
-                  : 'bg-primary'
-              }`}
+              className={`h-full rounded-full transition-all duration-700 ${queueTheme.progressBar}`}
               style={{ width: isCalled ? '100%' : `${ticket.progress_percent}%` }}
             />
           </div>
@@ -204,14 +282,3 @@ export const LiveTicketView: React.FC = () => {
     </div>
   );
 };
-
-function TicketIcon(props: React.SVGProps<SVGSVGElement>) {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}>
-      <path d="M2 9a3 3 0 0 1 0 6v2a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-2a3 3 0 0 1 0-6V7a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2Z" />
-      <path d="M13 5v2" />
-      <path d="M13 17v2" />
-      <path d="M13 11v2" />
-    </svg>
-  );
-}

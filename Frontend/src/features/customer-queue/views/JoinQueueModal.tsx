@@ -3,15 +3,35 @@ import { useNavigate } from 'react-router-dom';
 import { BusinessSummary } from '@/core/types';
 import { Modal } from '@/shared/components/Modal';
 import { Button } from '@/shared/components/Button';
+import { Select, SelectOption } from '@/shared/components/Select';
 import { apiClient } from '@/core/api/client';
 import { storage } from '@/core/utils/storage';
-import { Ticket, Users, Clock, Sparkles } from 'lucide-react';
+import { Ticket, ShieldCheck } from 'lucide-react';
 
 interface JoinQueueModalProps {
   business: BusinessSummary;
   isOpen: boolean;
   onClose: () => void;
 }
+
+const SERVICE_OPTIONS: SelectOption[] = [
+  {
+    value: 'General Consultation',
+    label: 'General Consultation / Checkup',
+  },
+  {
+    value: 'Dental Cleaning',
+    label: 'Dental Cleaning & Polish',
+  },
+  {
+    value: 'Urgent Treatment',
+    label: 'Urgent Treatment / Toothache',
+  },
+  {
+    value: 'Follow-up Visit',
+    label: 'Follow-up Visit & Review',
+  },
+];
 
 export const JoinQueueModal: React.FC<JoinQueueModalProps> = ({
   business,
@@ -48,15 +68,15 @@ export const JoinQueueModal: React.FC<JoinQueueModalProps> = ({
 
   return (
     <Modal isOpen={isOpen} onClose={onClose} title="Join Digital Queue">
-      <div className="space-y-4">
+      <div className="space-y-3.5">
         {/* Business summary pill */}
-        <div className="bg-slate-50 p-3.5 rounded-xl border border-slate-100 flex items-center justify-between">
+        <div className="bg-slate-50 p-3 rounded-2xl border border-slate-100 flex items-center justify-between">
           <div>
             <h4 className="font-bold text-sm text-slate-900">{business.name}</h4>
             <p className="text-xs text-slate-500">{business.address}</p>
           </div>
           <div className="text-right">
-            <span className="text-xs font-bold text-emerald-700 bg-emerald-100/70 px-2 py-0.5 rounded-md">
+            <span className="text-xs font-bold text-emerald-700 bg-emerald-100/80 px-2 py-0.5 rounded-md">
               Now: {business.currently_serving}
             </span>
             <p className="text-[11px] text-slate-500 mt-0.5">~{business.estimated_wait_minutes}m wait</p>
@@ -64,12 +84,12 @@ export const JoinQueueModal: React.FC<JoinQueueModalProps> = ({
         </div>
 
         {/* 1-Click Guest Guarantee Banner */}
-        <div className="flex items-center gap-2 p-2.5 rounded-xl bg-indigo-50/80 border border-indigo-100 text-indigo-800 text-xs font-medium">
-          <Sparkles className="w-4 h-4 text-indigo-500 shrink-0" />
-          <span>No password required! Your ticket will stay saved in this browser.</span>
+        <div className="flex items-center gap-2 p-2 rounded-xl bg-indigo-50/80 border border-indigo-100 text-indigo-800 text-xs font-medium">
+          <ShieldCheck className="w-4 h-4 text-indigo-600 shrink-0" />
+          <span>No password required. Your ticket stays saved in this browser.</span>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-3.5 pt-2">
+        <form onSubmit={handleSubmit} className="space-y-3 pt-1">
           <div>
             <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
               Your Name <span className="text-rose-500">*</span>
@@ -80,7 +100,7 @@ export const JoinQueueModal: React.FC<JoinQueueModalProps> = ({
               placeholder="e.g. Alex Johnson"
               value={customerName}
               onChange={(e) => setCustomerName(e.target.value)}
-              className="w-full px-3.5 py-2.5 bg-white rounded-xl border border-slate-300 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-primary font-medium"
+              className="w-full px-3.5 py-2 bg-white rounded-xl border border-slate-300 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-primary font-medium"
             />
           </div>
 
@@ -93,25 +113,18 @@ export const JoinQueueModal: React.FC<JoinQueueModalProps> = ({
               placeholder="e.g. +1 555-0199"
               value={phone}
               onChange={(e) => setPhone(e.target.value)}
-              className="w-full px-3.5 py-2.5 bg-white rounded-xl border border-slate-300 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-primary font-medium"
+              className="w-full px-3.5 py-2 bg-white rounded-xl border border-slate-300 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-primary font-medium"
             />
           </div>
 
-          <div>
-            <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
-              Select Service
-            </label>
-            <select
-              value={serviceType}
-              onChange={(e) => setServiceType(e.target.value)}
-              className="w-full px-3.5 py-2.5 bg-white rounded-xl border border-slate-300 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-primary font-medium"
-            >
-              <option value="General Consultation">General Consultation / Checkup</option>
-              <option value="Dental Cleaning">Dental Cleaning & Polish</option>
-              <option value="Urgent Treatment">Urgent Treatment</option>
-              <option value="Follow-up Visit">Follow-up Visit</option>
-            </select>
-          </div>
+          {/* Clean Custom Select Component with direction="up" so it never overflows off modal/screen */}
+          <Select
+            label="Select Service"
+            options={SERVICE_OPTIONS}
+            value={serviceType}
+            onChange={setServiceType}
+            direction="up"
+          />
 
           {error && (
             <p className="text-xs font-semibold text-rose-600 bg-rose-50 p-2.5 rounded-lg border border-rose-200">
@@ -119,7 +132,7 @@ export const JoinQueueModal: React.FC<JoinQueueModalProps> = ({
             </p>
           )}
 
-          <div className="pt-3">
+          <div className="pt-2">
             <Button
               type="submit"
               variant="success"

@@ -6,9 +6,14 @@ export function formatWaitTime(minutes: number): string {
   if (minutes <= 0) return 'Immediate';
   if (minutes === 1) return '~1 min';
   if (minutes < 60) return `~${minutes} mins`;
+  
   const hours = Math.floor(minutes / 60);
   const remainingMins = minutes % 60;
-  return remainingMins > 0 ? `~${hours}h ${remainingMins}m` : `~${hours}h`;
+  
+  if (remainingMins === 0) {
+    return hours === 1 ? '~1 hour' : `~${hours} hours`;
+  }
+  return `~${hours}h ${remainingMins.toString().padStart(2, '0')}m`;
 }
 
 export function formatSecondsToTimer(totalSeconds: number): string {
